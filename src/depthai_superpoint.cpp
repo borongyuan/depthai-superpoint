@@ -39,7 +39,8 @@ int main(int argc, char **argv)
     manip->initialConfig.setResize(320, 200);
 
     superPointNetwork->setBlobPath(nnPath);
-    superPointNetwork->setNumInferenceThreads(2);
+    superPointNetwork->setNumInferenceThreads(1);
+    superPointNetwork->setNumNCEPerInferenceThread(2);
     superPointNetwork->input.setBlocking(false);
 
     monoLeft->out.link(stereo->left);
