@@ -21,8 +21,10 @@ int main(int argc, char **argv)
 
     monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
     monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_800_P);
+    monoLeft->setFps(15);
     monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
     monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_800_P);
+    monoRight->setFps(15);
 
     stereo->setDepthAlign(dai::StereoDepthProperties::DepthAlign::RECTIFIED_LEFT);
     stereo->setSubpixel(true);
