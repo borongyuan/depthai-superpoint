@@ -55,9 +55,9 @@ int main(int argc, char **argv)
 
     monoLeft->out.link(stereo->left);
     monoRight->out.link(stereo->right);
+    stereo->rectifiedLeft.link(xoutLeft->input);
     stereo->rectifiedLeft.link(manip->inputImage);
     manip->out.link(superPointNetwork->input);
-    superPointNetwork->passthrough.link(xoutLeft->input);
     superPointNetwork->out.link(xoutNN->input);
 
     dai::Device device(pipeline);
@@ -69,12 +69,15 @@ int main(int argc, char **argv)
     {
         auto left = leftQueue->get<dai::ImgFrame>();
         auto superPoint = superPointQueue->get<dai::NNData>();
+        while (superPoint->getSequenceNum() < left->getSequenceNum())
+            superPoint = superPointQueue->get<dai::NNData>();
 
         cv::Mat mono, heatmap, blended;
         cv::cvtColor(left->getFrame(), mono, cv::COLOR_GRAY2BGR);
-        cv::applyColorMap(fromPlanarFp16(superPoint->getLayerFp16("heatmap"), 320, 200, 0.0, 255.0), heatmap, cv::COLORMAP_HOT);
+        cv::resize(fromPlanarFp16(superPoint->getLayerFp16("heatmap"), 320, 200, 0.0, 255.0), heatmap, cv::Size(1280, 800));
+        cv::applyColorMap(heatmap, heatmap, cv::COLORMAP_HOT);
         cv::addWeighted(mono, 1, heatmap, 1, 0, blended);
-        cv::imshow("Heatmap", blended);
+        cv::imshow("SuperPoint Heatmap", blended);
 
         int key = cv::waitKey(1);
         if (key == 'q' || key == 'Q')
