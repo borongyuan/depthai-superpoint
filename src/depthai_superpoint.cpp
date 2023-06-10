@@ -1,5 +1,13 @@
 #include <depthai/depthai.hpp>
 
+cv::Mat fromPlanarFp16(const std::vector<float> &data, int w, int h, float mean, float scale)
+{
+    cv::Mat frame = cv::Mat(h, w, CV_8UC1);
+    for (int i = 0; i < w * h; i++)
+        frame.data[i] = (uint8_t)(data.data()[i] * scale + mean);
+    return frame;
+}
+
 int main(int argc, char **argv)
 {
     auto nnPath = std::string(argv[1]);
@@ -61,7 +69,12 @@ int main(int argc, char **argv)
     {
         auto left = leftQueue->get<dai::ImgFrame>();
         auto superPoint = superPointQueue->get<dai::NNData>();
-        cv::imshow("left", left->getFrame());
+
+        cv::Mat mono, heatmap, blended;
+        cv::cvtColor(left->getFrame(), mono, cv::COLOR_GRAY2BGR);
+        cv::applyColorMap(fromPlanarFp16(superPoint->getLayerFp16("heatmap"), 320, 200, 0.0, 255.0), heatmap, cv::COLORMAP_HOT);
+        cv::addWeighted(mono, 1, heatmap, 1, 0, blended);
+        cv::imshow("Heatmap", blended);
 
         int key = cv::waitKey(1);
         if (key == 'q' || key == 'Q')
