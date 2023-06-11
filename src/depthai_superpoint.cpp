@@ -39,6 +39,7 @@ int main(int argc, char **argv)
     stereo->setSubpixelFractionalBits(4);
     stereo->setExtendedDisparity(false);
     stereo->setRectifyEdgeFillColor(0);
+    // stereo->setAlphaScaling(0.0);
     stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
     stereo->initialConfig.setMedianFilter(dai::MedianFilter::KERNEL_5x5);
     auto config = stereo->initialConfig.get();
@@ -46,6 +47,7 @@ int main(int argc, char **argv)
     config.costMatching.enableCompanding = true;
     stereo->initialConfig.set(config);
 
+    manip->setKeepAspectRatio(false);
     manip->initialConfig.setResize(320, 200);
 
     superPointNetwork->setBlobPath(nnPath);
