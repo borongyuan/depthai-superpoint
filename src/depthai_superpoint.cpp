@@ -67,6 +67,13 @@ int main(int argc, char **argv)
     auto leftQueue = device.getOutputQueue("rectified_left", 8, false);
     auto superPointQueue = device.getOutputQueue("nn", 8, false);
 
+    std::vector<std::tuple<std::string, int, int>> irDrivers = device.getIrDrivers();
+	if(!irDrivers.empty())
+	{
+		device.setIrLaserDotProjectorBrightness(0);
+		device.setIrFloodLightBrightness(1500);
+	}
+
     while (true)
     {
         auto left = leftQueue->get<dai::ImgFrame>();
