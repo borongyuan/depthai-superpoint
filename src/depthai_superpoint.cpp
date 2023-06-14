@@ -1,5 +1,10 @@
 #include <depthai/depthai.hpp>
 
+void updateConfThresh(int percentConfThresh, void *conf_thresh)
+{
+    *((float *)conf_thresh) = float(percentConfThresh) / 100.f;
+}
+
 cv::Mat fromPlanarFp16(const std::vector<float> &data, int w, int h, float conf_thresh)
 {
     cv::Mat frame = cv::Mat(h, w, CV_8UC1);
@@ -76,6 +81,11 @@ int main(int argc, char **argv)
         device.setIrFloodLightBrightness(1500);
     }
 
+    float confThresh = 0.01f;
+    int defaultValue = (int)(confThresh * 100);
+    cv::namedWindow("SuperPoint");
+    cv::createTrackbar("Detector confidence threshold %", "SuperPoint", &defaultValue, 100, updateConfThresh, &confThresh);
+
     while (true)
     {
         auto left = leftQueue->get<dai::ImgFrame>();
@@ -90,7 +100,7 @@ int main(int argc, char **argv)
         cv::cvtColor(left->getFrame(), mono, cv::COLOR_GRAY2BGR);
         disparity->getFrame().convertTo(disp, CV_8UC1, 255.0 / 1001);
         cv::applyColorMap(disp, disp, cv::COLORMAP_TURBO);
-        cv::resize(fromPlanarFp16(superPoint->getLayerFp16("heatmap"), 320, 200, 0.015), heatmap, cv::Size(1280, 800));
+        cv::resize(fromPlanarFp16(superPoint->getLayerFp16("heatmap"), 320, 200, confThresh), heatmap, cv::Size(1280, 800));
         cv::cvtColor(heatmap, heatmap, cv::COLOR_GRAY2BGR);
         cv::subtract(255, heatmap, blended);
         cv::addWeighted(mono.mul(blended, 1.0 / 255), 1, disp.mul(heatmap, 1.0 / 255), 1, 0, blended);
