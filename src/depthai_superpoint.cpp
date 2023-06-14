@@ -34,10 +34,10 @@ int main(int argc, char **argv)
     xoutDisp->setStreamName("disparity");
     xoutNN->setStreamName("nn");
 
-    monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
+    monoLeft->setCamera("left");
     monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_800_P);
     monoLeft->setFps(15);
-    monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
+    monoRight->setCamera("right");
     monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_800_P);
     monoRight->setFps(15);
 
