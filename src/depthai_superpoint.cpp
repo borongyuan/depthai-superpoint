@@ -53,6 +53,7 @@ int main(int argc, char **argv)
     stereo->initialConfig.set(config);
 
     manip->setKeepAspectRatio(false);
+    manip->setMaxOutputFrameSize(320 * 200);
     manip->initialConfig.setResize(320, 200);
 
     superPointNetwork->setBlobPath(nnPath);
