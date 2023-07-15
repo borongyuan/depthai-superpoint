@@ -1,5 +1,29 @@
 #include <depthai/depthai.hpp>
 
+std::string ProtocolToStr(XLinkProtocol_t val)
+{
+    switch (val)
+    {
+    case X_LINK_USB_VSC:
+        return "X_LINK_USB_VSC";
+    case X_LINK_USB_CDC:
+        return "X_LINK_USB_CDC";
+    case X_LINK_PCIE:
+        return "X_LINK_PCIE";
+    case X_LINK_IPC:
+        return "X_LINK_IPC";
+    case X_LINK_TCP_IP:
+        return "X_LINK_TCP_IP";
+    case X_LINK_NMB_OF_PROTOCOLS:
+        return "X_LINK_NMB_OF_PROTOCOLS";
+    case X_LINK_ANY_PROTOCOL:
+        return "X_LINK_ANY_PROTOCOL";
+    default:
+        return "INVALID_ENUM_VALUE";
+        break;
+    }
+}
+
 void updateConfThresh(int percentConfThresh, void *conf_thresh)
 {
     *((float *)conf_thresh) = float(percentConfThresh) / 100.f;
@@ -17,6 +41,16 @@ int main(int argc, char **argv)
 {
     auto nnPath = std::string(argv[1]);
     std::cout << "Using blob at path: " << nnPath.c_str() << std::endl;
+
+    bool res = false;
+    dai::DeviceInfo info;
+    std::tie(res, info) = dai::Device::getFirstAvailableDevice();
+
+    if (!res)
+    {
+        std::cout << "No devices found" << std::endl;
+        return -1;
+    }
 
     dai::Pipeline pipeline;
 
@@ -42,34 +76,44 @@ int main(int argc, char **argv)
     monoRight->setFps(15);
 
     stereo->setDepthAlign(dai::StereoDepthProperties::DepthAlign::RECTIFIED_LEFT);
-    stereo->setSubpixel(true);
     stereo->setExtendedDisparity(true);
     stereo->setRectifyEdgeFillColor(0);
     // stereo->setAlphaScaling(0.0);
     stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
     stereo->initialConfig.setMedianFilter(dai::MedianFilter::KERNEL_5x5);
-    auto config = stereo->initialConfig.get();
-    config.costMatching.disparityWidth = dai::StereoDepthConfig::CostMatching::DisparityWidth::DISPARITY_64;
-    stereo->initialConfig.set(config);
 
     manip->setKeepAspectRatio(false);
     manip->setMaxOutputFrameSize(320 * 200);
     manip->initialConfig.setResize(320, 200);
 
     superPointNetwork->setBlobPath(nnPath);
-    superPointNetwork->setNumInferenceThreads(1);
-    superPointNetwork->setNumNCEPerInferenceThread(2);
+    superPointNetwork->setNumInferenceThreads(2);
+    superPointNetwork->setNumNCEPerInferenceThread(1);
     superPointNetwork->input.setBlocking(false);
 
     monoLeft->out.link(stereo->left);
     monoRight->out.link(stereo->right);
-    stereo->disparity.link(xoutDisp->input);
-    stereo->rectifiedLeft.link(xoutLeft->input);
+    if (ProtocolToStr(info.protocol) == "X_LINK_TCP_IP")
+    {
+        auto stereoEnc = pipeline.create<dai::node::VideoEncoder>();
+        auto leftEnc = pipeline.create<dai::node::VideoEncoder>();
+        stereoEnc->setDefaultProfilePreset(15, dai::VideoEncoderProperties::Profile::MJPEG);
+        leftEnc->setDefaultProfilePreset(15, dai::VideoEncoderProperties::Profile::MJPEG);
+        stereo->disparity.link(stereoEnc->input);
+        stereo->rectifiedLeft.link(leftEnc->input);
+        stereoEnc->bitstream.link(xoutDisp->input);
+        leftEnc->bitstream.link(xoutLeft->input);
+    }
+    else
+    {
+        stereo->disparity.link(xoutDisp->input);
+        stereo->rectifiedLeft.link(xoutLeft->input);
+    }
     stereo->rectifiedLeft.link(manip->inputImage);
     manip->out.link(superPointNetwork->input);
     superPointNetwork->out.link(xoutNN->input);
 
-    dai::Device device(pipeline);
+    dai::Device device(pipeline, info);
 
     auto leftQueue = device.getOutputQueue("rectified_left", 8, false);
     auto dispQueue = device.getOutputQueue("disparity", 8, false);
@@ -98,8 +142,17 @@ int main(int argc, char **argv)
             superPoint = superPointQueue->get<dai::NNData>();
 
         cv::Mat mono, disp, heatmap, blended;
-        cv::cvtColor(left->getFrame(), mono, cv::COLOR_GRAY2BGR);
-        disparity->getFrame().convertTo(disp, CV_8UC1, 255.0 / 1001);
+        if (ProtocolToStr(info.protocol) == "X_LINK_TCP_IP")
+        {
+            mono = cv::imdecode(left->getData(), cv::IMREAD_GRAYSCALE);
+            disp = cv::imdecode(disparity->getData(), cv::IMREAD_GRAYSCALE);
+        }
+        else
+        {
+            mono = left->getFrame();
+            disp = disparity->getFrame();
+        }
+        cv::cvtColor(mono, mono, cv::COLOR_GRAY2BGR);
         cv::applyColorMap(disp, disp, cv::COLORMAP_TURBO);
         cv::resize(fromPlanarFp16(superPoint->getLayerFp16("heatmap"), 320, 200, confThresh), heatmap, cv::Size(1280, 800));
         cv::cvtColor(heatmap, heatmap, cv::COLOR_GRAY2BGR);
