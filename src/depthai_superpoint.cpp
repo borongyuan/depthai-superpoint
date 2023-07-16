@@ -131,6 +131,7 @@ int main(int argc, char **argv)
     cv::namedWindow("SuperPoint");
     cv::createTrackbar("Detector confidence threshold %", "SuperPoint", &defaultValue, 100, updateConfThresh, &confThresh);
 
+    cv::Mat mono, disp, heatmap, blended;
     while (true)
     {
         auto left = leftQueue->get<dai::ImgFrame>();
@@ -141,11 +142,10 @@ int main(int argc, char **argv)
         while (superPoint->getSequenceNum() < left->getSequenceNum())
             superPoint = superPointQueue->get<dai::NNData>();
 
-        cv::Mat mono, disp, heatmap, blended;
         if (ProtocolToStr(info.protocol) == "X_LINK_TCP_IP")
         {
-            mono = cv::imdecode(left->getData(), cv::IMREAD_GRAYSCALE);
-            disp = cv::imdecode(disparity->getData(), cv::IMREAD_GRAYSCALE);
+            cv::imdecode(left->getData(), cv::IMREAD_GRAYSCALE, &mono);
+            cv::imdecode(disparity->getData(), cv::IMREAD_GRAYSCALE, &disp);
         }
         else
         {
