@@ -1,29 +1,5 @@
 #include <depthai/depthai.hpp>
 
-std::string ProtocolToStr(XLinkProtocol_t val)
-{
-    switch (val)
-    {
-    case X_LINK_USB_VSC:
-        return "X_LINK_USB_VSC";
-    case X_LINK_USB_CDC:
-        return "X_LINK_USB_CDC";
-    case X_LINK_PCIE:
-        return "X_LINK_PCIE";
-    case X_LINK_IPC:
-        return "X_LINK_IPC";
-    case X_LINK_TCP_IP:
-        return "X_LINK_TCP_IP";
-    case X_LINK_NMB_OF_PROTOCOLS:
-        return "X_LINK_NMB_OF_PROTOCOLS";
-    case X_LINK_ANY_PROTOCOL:
-        return "X_LINK_ANY_PROTOCOL";
-    default:
-        return "INVALID_ENUM_VALUE";
-        break;
-    }
-}
-
 void updateConfThresh(int percentConfThresh, void *conf_thresh)
 {
     *((float *)conf_thresh) = float(percentConfThresh) / 100.f;
@@ -93,7 +69,7 @@ int main(int argc, char **argv)
 
     monoLeft->out.link(stereo->left);
     monoRight->out.link(stereo->right);
-    if (ProtocolToStr(info.protocol) == "X_LINK_TCP_IP")
+    if (info.protocol == X_LINK_TCP_IP)
     {
         auto stereoEnc = pipeline.create<dai::node::VideoEncoder>();
         auto leftEnc = pipeline.create<dai::node::VideoEncoder>();
@@ -142,7 +118,7 @@ int main(int argc, char **argv)
         while (superPoint->getSequenceNum() < left->getSequenceNum())
             superPoint = superPointQueue->get<dai::NNData>();
 
-        if (ProtocolToStr(info.protocol) == "X_LINK_TCP_IP")
+        if (info.protocol == X_LINK_TCP_IP)
         {
             cv::imdecode(left->getData(), cv::IMREAD_GRAYSCALE, &mono);
             cv::imdecode(disparity->getData(), cv::IMREAD_GRAYSCALE, &disp);
