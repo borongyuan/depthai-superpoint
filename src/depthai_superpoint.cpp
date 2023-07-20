@@ -138,7 +138,10 @@ int main(int argc, char **argv)
 
         int key = cv::waitKey(1);
         if (key == 'q' || key == 'Q')
+        {
+            device.close();
             return 0;
+        }
     }
 
     return 0;
